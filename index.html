@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YouTube to M3U8 Converter</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        #inputArea {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        #youtubeLink {
+            padding: 10px;
+            width: 300px;
+            margin-bottom: 10px;
+        }
+
+        #convertButton {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        #outputArea {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        #downloadLink {
+            display: none;
+            margin-top: 10px;
+            padding: 10px 20px;
+            background-color: #008CBA;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #errorDisplay{
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div id="inputArea">
+        <input type="text" id="youtubeLink" placeholder="Enter YouTube Video Link">
+        <button id="convertButton">Convert</button>
+        <div id="errorDisplay"></div>
+    </div>
+    <div id="outputArea">
+        <a id="downloadLink" download="video.m3u8">Download M3U8</a>
+    </div>
+
+    <script>
+        document.getElementById('convertButton').addEventListener('click', async function() {
+            const youtubeLink = document.getElementById('youtubeLink').value;
+            const downloadLink = document.getElementById('downloadLink');
+            const errorDisplay = document.getElementById('errorDisplay');
+            errorDisplay.textContent = "";
+
+            if (!youtubeLink) {
+                errorDisplay.textContent = "Please enter a YouTube link.";
+                return;
+            }
+
+            try {
+                const videoId = extractVideoId(youtubeLink);
+                if (!videoId){
+                    errorDisplay.textContent = "Invalid YouTube Link";
+                    return;
+                }
+                const m3u8Url = await getM3U8Url(videoId);
+
+                if (!m3u8Url){
+                    errorDisplay.textContent = "Could not retrieve m3u8 URL";
+                    return;
+                }
+
+                const m3u8Content = await fetch(m3u8Url).then(response => response.text());
+                const blob = new Blob([m3u8Content], { type: 'application/vnd.apple.mpegurl' });
+                const url = window.URL.createObjectURL(blob);
+
+                downloadLink.href = url;
+                downloadLink.style.display = 'block';
+
+            } catch (error) {
+                console.error("Error:", error);
+                errorDisplay.textContent = "An error occurred during conversion.";
+            }
+        });
+
+        function extractVideoId(url) {
+            const regExp = /^.*((http:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|embed\/)|youtu\.be\/))([a-zA-Z0-9\-\_]{11}).*/;
+            const match = url.match(regExp);
+            return (match && match[6]) ? match[6] : false;
+        }
+
+        async function getM3U8Url(videoId) {
+            const infoUrl = `https://noembed.com/embed?url=https://www.youtube.com/watch?v=${videoId}`;
+            try {
+                const response = await fetch(infoUrl);
+                const data = await response.json();
+                if (data && data.url) {
+                    return data.url;
+                } else {
+                    return null;
+                }
+
+            } catch (error) {
+                console.error("Error fetching video info:", error);
+                return null;
+            }
+
+        }
+
+    </script>
+</body>
+</html>
+ 
